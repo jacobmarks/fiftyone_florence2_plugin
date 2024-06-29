@@ -1,0 +1,12 @@
+fiftyone:
+  version: ">=0.23.8"
+name: "@jacobmarks/florence2"
+version: "0.1.0"
+description: "Connect Microsoft's Florence-2 Vision-Language Model to your data!"
+url: "https://github.com/jacobmarks/fiftyone_florence2_plugin"
+operators:
+  - caption_with_florence2
+  - ocr_with_florence2
+  - detect_with_florence2
+  - caption_to_phrase_grounding_with_florence2
+  - referring_expression_segmentation_with_florence2
