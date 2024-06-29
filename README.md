@@ -1,6 +1,5 @@
 ## Florence-2 Plugin
 
-
 ### Plugin Overview
 
 This plugin allows you to apply Florence-2 directly to your FiftyOne datasets.

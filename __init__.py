@@ -36,12 +36,20 @@ def _get_model_and_processor(model_path):
             model_path, attn_implementation="sdpa", trust_remote_code=True
         )
 
-    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
+    processor = AutoProcessor.from_pretrained(
+        model_path, trust_remote_code=True
+    )
     return model, processor
 
 
 def _generate_and_parse(
-    model, processor, task, image, text_input=None, max_new_tokens=1024, num_beams=3
+    model,
+    processor,
+    task,
+    image,
+    text_input=None,
+    max_new_tokens=1024,
+    num_beams=3,
 ):
     text = task
     if text_input is not None:
@@ -55,7 +63,9 @@ def _generate_and_parse(
         num_beams=num_beams,
         do_sample=False,
     )
-    generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+    generated_text = processor.batch_decode(
+        generated_ids, skip_special_tokens=False
+    )[0]
 
     parsed_answer = processor.post_process_generation(
         generated_text, task=task, image_size=(image.width, image.height)
@@ -94,7 +104,9 @@ def _convert_bbox(bbox, width, height):
 
 
 def _extract_detections(parsed_answer, task, image):
-    label_key = "bboxes_labels" if task == "<OPEN_VOCABULARY_DETECTION>" else "labels"
+    label_key = (
+        "bboxes_labels" if task == "<OPEN_VOCABULARY_DETECTION>" else "labels"
+    )
     bbox_key = "quad_boxes" if task == "<OCR_WITH_REGION>" else "bboxes"
     bboxes = parsed_answer[task][bbox_key]
     labels = parsed_answer[task][label_key]
@@ -158,7 +170,9 @@ def _model_download_check_inputs(ctx, inputs):
         )
         inputs.view(
             "model_download_warning",
-            types.Warning(label="Model not downloaded", description=description),
+            types.Warning(
+                label="Model not downloaded", description=description
+            ),
         )
 
 
@@ -247,14 +261,15 @@ def caption_to_phrase_grounding_with_florence2(
     caption=None,
     label_field=None,
 ):
-
     def _resolve_caption(sample, caption_field, caption):
         if caption_field is not None:
             return sample[caption_field]
         elif caption is not None:
             return caption
         else:
-            raise ValueError("Either `caption_field` or `caption` must be provided")
+            raise ValueError(
+                "Either `caption_field` or `caption` must be provided"
+            )
 
     task = "<CAPTION_TO_PHRASE_GROUNDING>"
     if label_field is None:
@@ -289,7 +304,9 @@ def referring_expression_segmentation_with_florence2(
         elif text_input is not None:
             return text_input
         else:
-            raise ValueError("Either `text_field` or `text_input` must be provided")
+            raise ValueError(
+                "Either `text_field` or `text_input` must be provided"
+            )
 
     model, processor = _get_model_and_processor(model_path)
     for sample in sample_collection.iter_samples(autosave=True):
@@ -327,7 +344,10 @@ def referring_expression_segmentation_with_florence2(
 
             pls.append(
                 fo.Polyline(
-                    points=[xy_points], label=f"object_{k+1}", filled=True, closed=True
+                    points=[xy_points],
+                    label=f"object_{k+1}",
+                    filled=True,
+                    closed=True,
                 )
             )
 
@@ -393,7 +413,8 @@ class CaptionWithFlorence2(foo.Operator):
         form_view = types.View(
             label="Caption with Florence-2",
             description=(
-                "Generate a caption for each image in the dataset using" "Florence-2"
+                "Generate a caption for each image in the dataset using"
+                "Florence-2"
             ),
         )
         _model_choice_inputs(ctx, inputs)
@@ -479,7 +500,9 @@ class OCRWithFlorence2(foo.Operator):
                 label_field=label_field,
             )
         else:
-            ocr_with_florence2(view, model_path=model_path, label_field=label_field)
+            ocr_with_florence2(
+                view, model_path=model_path, label_field=label_field
+            )
 
         dataset.add_dynamic_sample_fields()
         ctx.ops.reload_dataset()
@@ -666,7 +689,6 @@ class CaptionToPhraseGroundingWithFlorence2(foo.Operator):
         ctx.ops.reload_dataset()
 
 
-
 def _referring_expression_inputs(ctx, inputs):
     input_choices = ["from_field", "direct"]
     radio_group = types.RadioGroup()
@@ -721,6 +743,7 @@ def _polylines_label_field_inputs(inputs):
         required=False,
     )
 
+
 class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
     @property
     def config(self):
@@ -738,7 +761,9 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
         inputs = types.Object()
         form_view = types.View(
             label="Referring expression segmentation with Florence-2",
-            description=("Perform referring expression segmentation with Florence-2"),
+            description=(
+                "Perform referring expression segmentation with Florence-2"
+            ),
         )
         _model_choice_inputs(ctx, inputs)
         _referring_expression_inputs(ctx, inputs)
