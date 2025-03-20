@@ -9,11 +9,15 @@ from .utils import _handle_calling, _BaseFlorence2Operator
 class OCRWithFlorence2(_BaseFlorence2Operator):
     """Operator for performing OCR with Florence-2."""
     
-    def __init__(self):
-        self.operation = "ocr"
-        self.operation_label = "perform OCR on images with Florence-2"
-        self.form_label = "OCR with Florence-2"
-        self.form_description = "Perform OCR on images using Florence-2"
+    @property
+    def config(self):
+        _config = foo.OperatorConfig(
+            name="ocr_with_florence2",
+            label="Florence2: perform OCR on images with Florence-2",
+            dynamic=True,
+        )
+        return _config
+
     
     def _add_operation_inputs(self, ctx, inputs):
         # Store region info

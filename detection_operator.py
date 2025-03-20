@@ -9,12 +9,14 @@ from .utils import _handle_calling, _BaseFlorence2Operator
 # Specific operator classes
 class DetectWithFlorence2(_BaseFlorence2Operator):
     """Operator for detecting objects with Florence-2."""
-    
-    def __init__(self):
-        self.operation = "detection"
-        self.operation_label = "detect objects in images with Florence-2"
-        self.form_label = "Detect with Florence-2"
-        self.form_description = "Detect objects in images using Florence-2"
+    @property
+    def config(self):
+        _config = foo.OperatorConfig(
+            name="detect_with_florence2",
+            label="Florence2: detect objects in images with Florence-2",
+            dynamic=True,
+        )
+        return _config
     
     def _add_operation_inputs(self, ctx, inputs):
         # Detection type

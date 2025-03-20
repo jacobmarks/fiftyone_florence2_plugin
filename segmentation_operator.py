@@ -10,11 +10,14 @@ from .utils import _handle_calling, _BaseFlorence2Operator
 class ReferringExpressionSegmentationWithFlorence2(_BaseFlorence2Operator):
     """Operator for performing referring expression segmentation with Florence-2."""
     
-    def __init__(self):
-        self.operation = "segmentation"
-        self.operation_label = "perform referring expression segmentation with Florence-2"
-        self.form_label = "Referring expression segmentation with Florence-2"
-        self.form_description = "Perform referring expression segmentation with Florence-2"
+    @property
+    def config(self):
+        _config = foo.OperatorConfig(
+            name="referring_expression_segmentation_with_florence2",
+            label="Florence2: perform referring expression segmentation with Florence-2",
+            dynamic=True,
+        )
+        return _config
     
     def _add_operation_inputs(self, ctx, inputs):
         # Expression source

@@ -9,12 +9,14 @@ from .utils import _handle_calling, _BaseFlorence2Operator
 # Specific operator classes
 class CaptionToPhraseGroundingWithFlorence2(_BaseFlorence2Operator):
     """Operator for grounding phrases in captions with Florence-2."""
-    
-    def __init__(self):
-        self.operation = "phrase_grounding"
-        self.operation_label = "Ground phrases in captions with Florence-2"
-        self.form_label = "Caption to phrase grounding with Florence-2"
-        self.form_description = "Ground phrases in captions with Florence-2"
+    @property
+    def config(self):
+        _config = foo.OperatorConfig(
+            name="caption_to_phrase_grounding_with_florence2",
+            label="Florence2: Ground phrases in captions with Florence-2",
+            dynamic=True,
+        )
+        return _config
     
     def _add_operation_inputs(self, ctx, inputs):
         # Caption source

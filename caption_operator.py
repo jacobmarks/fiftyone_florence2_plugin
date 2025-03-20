@@ -10,11 +10,14 @@ from .utils import _handle_calling, _BaseFlorence2Operator
 class CaptionWithFlorence2(_BaseFlorence2Operator):
     """Operator for captioning images with Florence-2."""
     
-    def __init__(self):
-        self.operation = "caption"
-        self.operation_label = "caption images with Florence-2"
-        self.form_label = "Caption with Florence-2"
-        self.form_description = "Generate a caption for each image in the dataset using Florence-2"
+    @property
+    def config(self):
+        _config = foo.OperatorConfig(
+            name="caption_with_florence2",
+            label="Florence2: caption images with Florence-2",
+            dynamic=True,
+        )
+        return _config
     
     def _add_operation_inputs(self, ctx, inputs):
         # Caption field
