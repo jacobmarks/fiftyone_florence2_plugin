@@ -223,7 +223,7 @@ class Florence2(Model):
         # Initialize model
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path, 
-            attn_implementation="sdpa", 
+            # attn_implementation="sdpa", 
             trust_remote_code=True,
             device_map=self.device,
             torch_dtype=self.torch_dtype
