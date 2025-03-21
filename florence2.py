@@ -187,12 +187,11 @@ class Florence2(Model):
         self.device = get_device()
 
         # Initialize model
-        with patch("transformers.dynamic_module_utils.get_imports", fixed_get_imports):
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_path, 
-                attn_implementation="sdpa", 
-                trust_remote_code=True,
-                device_map=self.device
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_path, 
+            attn_implementation="sdpa", 
+            trust_remote_code=True,
+            device_map=self.device
             )
 
         self.processor = AutoProcessor.from_pretrained(
