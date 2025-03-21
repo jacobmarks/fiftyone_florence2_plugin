@@ -70,33 +70,46 @@ def get_device():
         return "mps"
     return "cpu"
 
-def _task_to_field_name(task):
-    """Convert a task name to a field name."""
-    fmt_task = task.lower().replace("<", "").replace(">", "").replace(" ", "_")
-    return f"florence2_{fmt_task}"
-
 def _convert_bbox(bbox, width, height):
-    """Convert bounding box coordinates to FiftyOne format."""
+    """Convert bounding box coordinates to FiftyOne format.
+    
+    Takes raw bounding box coordinates and converts them to normalized coordinates
+    in FiftyOne's [x, y, width, height] format. Handles both standard rectangular
+    bounding boxes (4 coordinates) and quadrilateral boxes (8 coordinates).
+
+    Args:
+        bbox: List of coordinates. Either [x1,y1,x2,y2] for rectangular boxes
+              or [x1,y1,x2,y2,x3,y3,x4,y4] for quadrilateral boxes
+        width: Width of the image in pixels
+        height: Height of the image in pixels
+
+    Returns:
+        list: Normalized coordinates in format [x, y, width, height] where:
+            - x,y is the top-left corner (normalized by image dimensions)
+            - width,height are the box dimensions (normalized by image dimensions)
+    """
     if len(bbox) == 4:
+        # Standard rectangular box: convert from [x1,y1,x2,y2] to [x,y,w,h]
+        # x1,y1 is top-left corner, x2,y2 is bottom-right corner
         return [
-            bbox[0] / width,
-            bbox[1] / height,
-            (bbox[2] - bbox[0]) / width,
-            (bbox[3] - bbox[1]) / height,
+            bbox[0] / width,              # x coordinate (normalized)
+            bbox[1] / height,             # y coordinate (normalized) 
+            (bbox[2] - bbox[0]) / width,  # width (normalized)
+            (bbox[3] - bbox[1]) / height  # height (normalized)
         ]
     else:
-        # quad_boxes
+        # Quadrilateral box: find bounding rectangle that contains all points
         x1, y1, x2, y2, x3, y3, x4, y4 = bbox
-        x_min = min(x1, x2, x3, x4)
-        x_max = max(x1, x2, x3, x4)
-        y_min = min(y1, y2, y3, y4)
-        y_max = max(y1, y2, y3, y4)
+        x_min = min(x1, x2, x3, x4)  # Leftmost x coordinate
+        x_max = max(x1, x2, x3, x4)  # Rightmost x coordinate
+        y_min = min(y1, y2, y3, y4)  # Topmost y coordinate
+        y_max = max(y1, y2, y3, y4)  # Bottommost y coordinate
 
         return [
-            x_min / width,
-            y_min / height,
-            (x_max - x_min) / width,
-            (y_max - y_min) / height,
+            x_min / width,               # x coordinate (normalized)
+            y_min / height,              # y coordinate (normalized)
+            (x_max - x_min) / width,     # width (normalized)
+            (y_max - y_min) / height     # height (normalized)
         ]
 
 
@@ -232,7 +245,8 @@ class Florence2(Model):
             do_sample=False,
         )
         generated_text = self.processor.batch_decode(
-            generated_ids, skip_special_tokens=False
+            generated_ids, 
+            skip_special_tokens=False
         )[0]
 
         parsed_answer = self.processor.post_process_generation(
@@ -244,78 +258,108 @@ class Florence2(Model):
         return parsed_answer
 
     def _extract_detections(self, parsed_answer, task, image):
-        """Extract detections from parsed answer.
+        """Extracts object detections from the model's parsed output and converts them to FiftyOne format.
         
         Args:
-            parsed_answer: The parsed model output
-            task: The task that was performed
-            image: The input image
+            parsed_answer: Dict containing the parsed model output with bounding boxes and labels
+            task: String specifying the task type - either "<OPEN_VOCABULARY_DETECTION>" or "<OCR_WITH_REGION>"
+            image: PIL Image object used to get dimensions for normalizing coordinates
             
         Returns:
-            FiftyOne Detections object
+            A FiftyOne Detections object containing the extracted detections, where each detection has:
+            - A label (either from model output or "object_N" if no label provided)
+            - A normalized bounding box in [0,1] coordinates
         """
+        # Choose the appropriate keys based on the task type
         label_key = (
             "bboxes_labels" if task == "<OPEN_VOCABULARY_DETECTION>" else "labels"
         )
         bbox_key = "quad_boxes" if task == "<OCR_WITH_REGION>" else "bboxes"
+        
+        # Extract bounding boxes and labels from the parsed output
         bboxes = parsed_answer[task][bbox_key]
         labels = parsed_answer[task][label_key]
+        
+        # Build list of FiftyOne Detection objects
         dets = []
         for i, (bbox, label) in enumerate(zip(bboxes, labels)):
+            # Create Detection with either model label or fallback object_N label
             dets.append(
                 Detection(
                     label=label if label else f"object_{i+1}",
                     bounding_box=_convert_bbox(bbox, image.width, image.height),
                 )
             )
+            
+        # Return all detections wrapped in a FiftyOne Detections object
         return Detections(detections=dets)
 
     def _extract_polylines(self, parsed_answer, task, image):
-        """Extract polylines from segmentation results.
+        """Extract polylines from segmentation results and convert them to FiftyOne format.
+        
+        Takes the raw polygon coordinates from the model output and converts them into
+        normalized coordinates relative to the image dimensions. Creates closed polylines
+        that can be visualized as filled polygons in FiftyOne.
         
         Args:
-            parsed_answer: The parsed model output
-            task: The task that was performed
-            image: The input image
+            parsed_answer (dict): The parsed model output containing polygon coordinates
+                in the format {task: {"polygons": [[[x1,y1,x2,y2,...]]]}
+            task (str): The segmentation task that was performed
+            image (PIL.Image): The input image used to normalize coordinates
             
         Returns:
-            FiftyOne Polylines object or None if no polygons found
+            fiftyone.core.labels.Polylines: A FiftyOne Polylines object containing all
+                the extracted polygons, where each polyline has:
+                - points: List of (x,y) coordinates normalized to [0,1]
+                - label: "object_N" where N is the polygon index
+                - filled: True to render as filled polygon
+                - closed: True to connect first/last points
+            None: If no polygons were found in the parsed output
         """
+        # Extract list of polygons from model output
         polygons = parsed_answer[task]["polygons"]
         if not polygons:
             return None
 
         polylines = []
 
+        # Process each polygon
         for k, polygon in enumerate(polygons):
-            _polygon = polygon[0]
-            x_points = [p for i, p in enumerate(_polygon) if i % 2 == 0]
-            y_points = [p for i, p in enumerate(_polygon) if i % 2 != 0]
-            x_points = [x / image.width for x in x_points]
-            y_points = [y / image.height for y in y_points]
+            # Process all contours for this polygon
+            all_contours = []
+            for contour in polygon:
+                # Separate interleaved x,y coordinates and normalize by image dimensions
+                x_points = [p for i, p in enumerate(contour) if i % 2 == 0]
+                y_points = [p for i, p in enumerate(contour) if i % 2 != 0]
+                x_points = [x / image.width for x in x_points]
+                y_points = [y / image.height for y in y_points]
 
-            xy_points = []
-            curr_x = x_points[0]
-            curr_y = y_points[0]
-            xy_points.append((curr_x, curr_y))
-            for i in range(1, len(x_points)):
-                curr_x = x_points[i]
+                # Convert to list of (x,y) tuples in a zigzag pattern
+                xy_points = []
+                curr_x = x_points[0]
+                curr_y = y_points[0]
                 xy_points.append((curr_x, curr_y))
-                curr_y = y_points[i]
-                xy_points.append((curr_x, curr_y))
+                
+                for i in range(1, len(x_points)):
+                    curr_x = x_points[i]
+                    xy_points.append((curr_x, curr_y))
+                    curr_y = y_points[i] 
+                    xy_points.append((curr_x, curr_y))
 
-            # Handle last point
-            xy_points.append((x_points[0], curr_y))
+                # Close the contour
+                xy_points.append((x_points[0], curr_y))
+                all_contours.append(xy_points)
 
+            # Create FiftyOne Polyline object with all contours
             polylines.append(
                 Polyline(
-                    points=[xy_points],
+                    points=all_contours,  # Now includes all contours for this polygon
                     label=f"object_{k+1}",
                     filled=True,
                     closed=True,
                 )
             )
-
+        # Return all polylines wrapped in a FiftyOne Polylines object
         return Polylines(polylines=polylines)
 
     def _predict_caption(self, image: Image.Image) -> str:
