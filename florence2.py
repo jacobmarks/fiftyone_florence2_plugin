@@ -363,141 +363,252 @@ class Florence2(Model):
         return Polylines(polylines=polylines)
 
     def _predict_caption(self, image: Image.Image) -> str:
-        """Generate a caption for an image.
+        """Generate a natural language caption describing the input image.
         
+        This method uses the Florence-2 model to generate a descriptive caption for the image.
+        The level of detail in the caption can be controlled via the "detail_level" parameter.
+
         Args:
-            image: The input image
+            image: PIL Image object containing the image to be captioned
             
         Returns:
-            The generated caption
-        """
-        detail_level = self.params.get("detail_level", "basic")
-        task_mapping = FLORENCE2_OPERATIONS["caption"]["task_mapping"]
-        task = task_mapping.get(detail_level, task_mapping[None])  # Get appropriate task or default
+            str: A natural language caption describing the contents and context of the image
             
+        Note:
+            The detail_level parameter can be set to:
+            - "basic": Short, simple caption (default)
+            - "detailed": Longer, more descriptive caption
+            - "dense": Very detailed caption with multiple aspects described
+        """
+        # Get the requested caption detail level, defaulting to "basic"
+        detail_level = self.params.get("detail_level", "basic")
+        
+        # Get the mapping of detail levels to Florence-2 task specifications
+        task_mapping = FLORENCE2_OPERATIONS["caption"]["task_mapping"]
+        
+        # Look up the appropriate task for the detail level, falling back to default if not found
+        task = task_mapping.get(detail_level, task_mapping[None])
+            
+        # Generate the caption by running the model and parsing its output
         parsed_answer = self._generate_and_parse(image, task)
+        
+        # Extract and return just the caption text from the parsed response
         return parsed_answer[task]
 
     def _predict_ocr(self, image: Image.Image) -> Union[str, Detections]:
-        """Perform OCR on an image.
+        """Perform Optical Character Recognition (OCR) on an input image.
+        
+        This method uses the Florence-2 model to detect and extract text from images.
+        It can operate in two modes:
+        1. Text extraction only - returns just the detected text
+        2. Region-based OCR - returns text with bounding box coordinates
         
         Args:
-            image: The input image
+            image (Image.Image): PIL Image object containing the image to perform OCR on
             
         Returns:
-            OCR text string or Detections object with text regions (if store_region_info=True)
+            Union[str, Detections]: Either:
+                - A string containing all detected text (when store_region_info=False)
+                - A Detections object containing text regions with bounding boxes
+                  (when store_region_info=True)
+                  
+        Note:
+            The behavior is controlled by the store_region_info parameter in self.params.
+            Set store_region_info=True to get region/bounding box information.
         """
+        # Check if region information should be included in output
         store_region_info = self.params.get("store_region_info", False)
         
         if store_region_info:
+            # Use region-based OCR task that includes bounding box coordinates
             task = FLORENCE2_OPERATIONS["ocr"]["region_task"]
             parsed_answer = self._generate_and_parse(image, task)
+            # Convert the parsed output into FiftyOne Detections format
             return self._extract_detections(parsed_answer, task, image)
         else:
+            # Use basic OCR task that returns only text
             task = FLORENCE2_OPERATIONS["ocr"]["task"]
             parsed_answer = self._generate_and_parse(image, task)
+            # Return just the extracted text string
             return parsed_answer[task]
 
     def _predict_detection(self, image: Image.Image) -> Detections:
-        """Detect objects in an image.
+        """Detect objects in an image using the Florence-2 model.
+        
+        This method performs object detection on the input image. It supports two modes:
+        1. Open vocabulary detection - Detects common objects without specific prompting
+        2. Prompted detection - Detects objects matching a provided text prompt
         
         Args:
-            image: The input image
+            image (Image.Image): PIL Image object containing the image to analyze
             
         Returns:
-            Detections object with detected objects
+            Detections: FiftyOne Detections object containing the detected objects.
+                       Each detection includes a label and bounding box coordinates.
+                       
+        Note:
+            The detection behavior is controlled by two parameters in self.params:
+            - detection_type: Controls the detection mode (open vocabulary vs prompted)
+            - text_prompt: Optional text prompt specifying objects to detect
         """
+        # Get detection parameters from self.params, defaulting to None if not specified
         detection_type = self.params.get("detection_type", None)
         text_prompt = self.params.get("text_prompt", None)
         
+        # Look up the appropriate Florence-2 task based on detection_type
         task_mapping = FLORENCE2_OPERATIONS["detection"]["task_mapping"]
-        task = task_mapping.get(detection_type, task_mapping[None])
+        task = task_mapping.get(detection_type, task_mapping[None])  # Fall back to default if type not found
         
+        # Run the model and parse its output, passing text_prompt if provided
         parsed_answer = self._generate_and_parse(image, task, text_input=text_prompt)
+        
+        # Convert the parsed model output into FiftyOne's Detections format
         return self._extract_detections(parsed_answer, task, image)
 
     def _predict_phrase_grounding(self, image: Image.Image) -> Detections:
-        """Ground caption phrases in an image.
+        """Ground caption phrases in an image using the Florence-2 model.
         
+        This method performs phrase grounding by identifying regions in the image that
+        correspond to specific phrases from a caption. It can use either a direct caption
+        string or a caption stored in a sample field.
+
         Args:
-            image: The input image
+            image (Image.Image): PIL Image object containing the image to analyze
             
         Returns:
-            Detections object with grounded phrases
+            Detections: FiftyOne Detections object containing the grounded phrases.
+                       Each detection includes the phrase text as the label and 
+                       bounding box coordinates indicating the region in the image.
+
+        Note:
+            The caption source is controlled by parameters in self.params:
+            - caption: Direct caption string to ground
+            - caption_field: Name of sample field containing caption to ground
         """
+        # Get the phrase grounding task configuration
         task = FLORENCE2_OPERATIONS["phrase_grounding"]["task"]
         
-        # Determine caption input
+        # Determine caption input - either direct caption or field reference
         if "caption" in self.params:
+            # Use directly provided caption string
             caption = self.params["caption"]
         else:
-            # caption_field will be resolved by the caller
+            # Use caption from specified field (resolved by caller)
             caption = self.params["caption_field"]
         
+        # Format the input by combining task instruction and caption
         text_input = f"{task}\n{caption}"
         
+        # Run model inference and parse the output
         parsed_answer = self._generate_and_parse(image, task, text_input=text_input)
+        
+        # Convert parsed output to FiftyOne Detections format
         return self._extract_detections(parsed_answer, task, image)
 
     def _predict_segmentation(self, image: Image.Image) -> Optional[Polylines]:
         """Segment an object in an image based on a referring expression.
         
+        This method performs instance segmentation by generating a polygon mask around
+        an object described by a natural language expression. The expression can be 
+        provided directly or referenced from a sample field.
+
         Args:
-            image: The input image
-            
+            image (Image.Image): PIL Image object containing the image to analyze
+
         Returns:
-            Polylines segmentation mask for the referred object or None if no object found
+            Optional[Polylines]: FiftyOne Polylines object containing the segmentation
+                mask as a polygon, or None if no matching object is found in the image
+
+        Note:
+            The referring expression is controlled by parameters in self.params:
+            - expression: Direct text string describing the object to segment
+            - expression_field: Name of sample field containing the referring expression
         """
+        # Get the segmentation task configuration from Florence-2 operations
         task = FLORENCE2_OPERATIONS["segmentation"]["task"]
         
-        # Determine expression input
+        # Determine the referring expression - either direct text or field reference
         if "expression" in self.params:
+            # Use directly provided expression string
             expression = self.params["expression"]
         else:
-            # expression_field will be resolved by the caller
+            # Use expression from specified field (resolved by caller)
             expression = self.params["expression_field"] 
         
+        # Format the input by combining task instruction and referring expression
         text_input = f"{task}\nExpression: {expression}"
         
+        # Run model inference and parse the output
         parsed_answer = self._generate_and_parse(image, task, text_input=text_input)
+        
+        # Convert parsed output to FiftyOne Polylines format
         return self._extract_polylines(parsed_answer, task, image)
 
     def _predict(self, image: Image.Image) -> Any:
-        """Process a single image with Florence-2.
+        """Process a single image with Florence-2 model.
         
+        This internal method handles routing the image to the appropriate prediction
+        method based on the operation type (caption, OCR, detection, etc.) that was 
+        specified when initializing the Florence2 class.
+
         Args:
-            image: The input image
+            image (Image.Image): PIL Image object to process with the model
             
         Returns:
-            Operation result (type depends on operation)
+            Any: Operation-specific result type:
+                - str for captioning
+                - Detections for detection/phrase grounding 
+                - Polylines for segmentation
+                - List[Detection] for OCR
+                
+        Raises:
+            ValueError: If self.operation is not one of the supported operation types
         """
+        # Map operation names to their corresponding prediction methods
         prediction_methods = {
-            "caption": self._predict_caption,
-            "ocr": self._predict_ocr,
-            "detection": self._predict_detection,
-            "phrase_grounding": self._predict_phrase_grounding,
-            "segmentation": self._predict_segmentation
+            "caption": self._predict_caption,          # Generate image caption
+            "ocr": self._predict_ocr,                 # Optical character recognition
+            "detection": self._predict_detection,      # Object detection
+            "phrase_grounding": self._predict_phrase_grounding,  # Locate described objects
+            "segmentation": self._predict_segmentation # Instance segmentation
         }
         
+        # Get the prediction method for the requested operation
         predict_method = prediction_methods.get(self.operation)
 
+        # Raise error if operation type is not supported
         if predict_method is None:
             raise ValueError(f"Unknown operation: {self.operation}")
             
+        # Call the appropriate prediction method with the image
         return predict_method(image)
 
     def predict(self, image: np.ndarray) -> Any:
-        """Process an image array with Florence-2.
+        """Process an image array with Florence-2 model.
         
-        This method is called by FiftyOne's apply_model method.
+        This method serves as the main entry point when using FiftyOne's apply_model functionality.
+        It converts the input numpy array to a PIL Image and routes it through the internal 
+        prediction pipeline.
         
         Args:
-            image: numpy array image
+            image (np.ndarray): Input image as a numpy array in RGB format with shape (H,W,3)
             
         Returns:
-            Operation result (type depends on operation)
+            Any: Operation-specific result type:
+                - str for captioning operations
+                - Detections for detection/phrase grounding operations
+                - Polylines for segmentation operations 
+                - List[Detection] for OCR operations
+                
+        Note:
+            This method automatically handles conversion between numpy array and PIL Image formats.
+            The specific return type depends on which operation was specified when initializing
+            the Florence2 class.
         """
+        # Convert numpy array to PIL Image format required by Florence-2
         pil_image = Image.fromarray(image)
+        
+        # Route through internal prediction pipeline
         return self._predict(pil_image)
 
 def run_florence2_model(
@@ -509,48 +620,72 @@ def run_florence2_model(
 ) -> None:
     """Apply Florence-2 operations to a FiftyOne dataset.
     
+    This function processes a FiftyOne dataset using the Florence-2 model, supporting
+    various vision tasks like captioning, detection, OCR, phrase grounding and segmentation.
+    
     Args:
-        dataset: FiftyOne dataset to process
-        operation: Type of operation to perform
-        output_field: Field to store results in
-        model_path: Model path or HuggingFace repo name
-        **kwargs: Operation-specific parameters
+        dataset: FiftyOne dataset containing images to process
+        operation: Type of operation to perform. Valid options are:
+            - "caption": Generate image captions
+            - "detection": Detect objects in images
+            - "ocr": Perform optical character recognition
+            - "phrase_grounding": Locate objects described by text
+            - "segmentation": Perform instance segmentation
+        output_field: Name of the field where results will be stored in the dataset
+        model_path: HuggingFace model identifier or local path to model weights.
+            Defaults to "microsoft/Florence-2-base"
+        **kwargs: Additional operation-specific parameters:
+            - caption_field: Field containing captions for phrase grounding
+            - expression_field: Field containing expressions for segmentation
+    
+    Note:
+        For phrase_grounding and segmentation operations that require per-sample text input,
+        the relevant text must be stored in dataset fields specified via kwargs.
     """
-    # Handle field-based parameters
+    # Special handling for operations that require per-sample text input from dataset fields
     if operation == "phrase_grounding" and "caption_field" in kwargs:
-        # We'll need to process each sample to get the caption from the field
+        # Initialize model for phrase grounding with the caption field name
         model = Florence2(
             operation=operation,
             model_path=model_path,
             caption_field=kwargs["caption_field"]
         )
         
+        # Process each sample individually to use its specific caption
         for sample in dataset.iter_samples(autosave=True):
+            # Extract caption from the specified field
             caption = sample[kwargs["caption_field"]]
-            # Override the caption parameter with the actual value
+            # Update model parameters with this sample's caption
             model.params["caption"] = caption
+            # Load and convert image to RGB numpy array
             result = model.predict(np.array(Image.open(sample.filepath).convert("RGB")))
+            # Store results in the specified output field
             sample[output_field] = result
             
     elif operation == "segmentation" and "expression_field" in kwargs:
-        # We'll need to process each sample to get the expression from the field
+        # Initialize model for segmentation with the expression field name
         model = Florence2(
             operation=operation,
             model_path=model_path,
             expression_field=kwargs["expression_field"]
         )
         
+        # Process each sample individually to use its specific expression
         for sample in dataset.iter_samples(autosave=True):
+            # Extract expression from the specified field
             expression = sample[kwargs["expression_field"]]
-            # Override the expression parameter with the actual value
+            # Update model parameters with this sample's expression
             model.params["expression"] = expression
+            # Load and convert image to RGB numpy array
             result = model.predict(np.array(Image.open(sample.filepath).convert("RGB")))
+            # Store results in the specified output field
             sample[output_field] = result
     else:
-        # Standard apply_model workflow for parameters that don't depend on sample fields
+        # For operations without per-sample parameters, use FiftyOne's built-in apply_model
         model = Florence2(
             operation=operation,
             model_path=model_path,
             **kwargs
         )
+        # Process entire dataset at once using apply_model
         dataset.apply_model(model, label_field=output_field)
