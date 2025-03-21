@@ -1,6 +1,4 @@
 import os
-
-from unittest.mock import patch
 from typing import List, Dict, Any, Optional, Union, Tuple
 
 os.environ['FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS'] = 'true'
@@ -13,7 +11,6 @@ import fiftyone as fo
 from fiftyone import Model
 from fiftyone.core.labels import Detection, Detections, Polyline, Polylines
 
-from transformers.dynamic_module_utils import get_imports
 from transformers import AutoModelForCausalLM, AutoProcessor
 
 # Constants
