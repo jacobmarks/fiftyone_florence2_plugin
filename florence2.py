@@ -1,11 +1,5 @@
-"""GPT-4o plugin.
-
-| Copyright 2017-2023, Voxel51, Inc.
-| `voxel51.com <https://voxel51.com/>`_
-|
-"""
-
 import os
+
 from unittest.mock import patch
 from typing import List, Dict, Any, Optional, Union, Tuple
 
@@ -75,14 +69,6 @@ def get_device():
     elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         return "mps"
     return "cpu"
-
-def fixed_get_imports(filename) -> list[str]:
-    """Fix for the unnecessary flash_attn requirement."""
-    if not str(filename).endswith("modeling_florence2.py"):
-        return get_imports(filename)
-    imports = get_imports(filename)
-    # imports.remove("flash_attn")
-    return imports
 
 def _task_to_field_name(task):
     """Convert a task name to a field name."""
@@ -186,12 +172,15 @@ class Florence2(Model):
         # Set device
         self.device = get_device()
 
+        self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+
         # Initialize model
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path, 
             attn_implementation="sdpa", 
             trust_remote_code=True,
-            device_map=self.device
+            device_map=self.device,
+            torch_dtype=self.torch_dtype
             )
 
         self.processor = AutoProcessor.from_pretrained(
@@ -233,7 +222,7 @@ class Florence2(Model):
         # Move inputs to the device
         for key in inputs:
             if torch.is_tensor(inputs[key]):
-                inputs[key] = inputs[key].to(self.device)
+                inputs[key] = inputs[key].to(self.device, self.torch_dtype)
 
         generated_ids = self.model.generate(
             input_ids=inputs["input_ids"],
@@ -247,7 +236,9 @@ class Florence2(Model):
         )[0]
 
         parsed_answer = self.processor.post_process_generation(
-            generated_text, task=task, image_size=(image.width, image.height)
+            generated_text, 
+            task=task, 
+            image_size=(image.width, image.height)
         )
 
         return parsed_answer
