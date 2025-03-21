@@ -81,7 +81,7 @@ def fixed_get_imports(filename) -> list[str]:
     if not str(filename).endswith("modeling_florence2.py"):
         return get_imports(filename)
     imports = get_imports(filename)
-    imports.remove("flash_attn")
+    # imports.remove("flash_attn")
     return imports
 
 def _task_to_field_name(task):
