@@ -110,6 +110,42 @@ def _convert_bbox(bbox, width, height):
         ]
 
 
+def _convert_polyline(contour, width, height):
+    """Convert polyline coordinates to FiftyOne format.
+    
+    Takes raw polyline coordinates and converts them to normalized coordinates
+    in FiftyOne's format. Creates a closed contour with normalized coordinates.
+
+    Args:
+        contour: List of interleaved x,y coordinates [x1,y1,x2,y2,...]
+        width: Width of the image in pixels
+        height: Height of the image in pixels
+
+    Returns:
+        list: List of (x,y) tuples representing normalized coordinates of the contour
+    """
+    # Separate interleaved x,y coordinates and normalize by image dimensions
+    x_points = [p for i, p in enumerate(contour) if i % 2 == 0]
+    y_points = [p for i, p in enumerate(contour) if i % 2 != 0]
+    x_points = [x / width for x in x_points]
+    y_points = [y / height for y in y_points]
+
+    # Convert to list of (x,y) tuples in a zigzag pattern
+    xy_points = []
+    curr_x = x_points[0]
+    curr_y = y_points[0]
+    xy_points.append((curr_x, curr_y))
+    
+    for i in range(1, len(x_points)):
+        curr_x = x_points[i]
+        xy_points.append((curr_x, curr_y))  # Horizontal segment
+        curr_y = y_points[i] 
+        xy_points.append((curr_x, curr_y))  # Vertical segment
+
+    # Close the contour
+    xy_points.append((x_points[0], curr_y))
+    return xy_points
+
 class Florence2(Model):
     """A FiftyOne model for running the Florence-2 multimodal model on images.
     
@@ -294,26 +330,15 @@ class Florence2(Model):
     def _extract_polylines(self, parsed_answer, task, image):
         """Extract polylines from segmentation results and convert them to FiftyOne format.
         
-        Takes the raw polygon coordinates from the model output and converts them into
-        normalized coordinates relative to the image dimensions. Creates closed polylines
-        that can be visualized as filled polygons in FiftyOne.
-        
         Args:
             parsed_answer (dict): The parsed model output containing polygon coordinates
-                in the format {task: {"polygons": [[[x1,y1,x2,y2,...]]]}
             task (str): The segmentation task that was performed
             image (PIL.Image): The input image used to normalize coordinates
             
         Returns:
             fiftyone.core.labels.Polylines: A FiftyOne Polylines object containing all
-                the extracted polygons, where each polyline has:
-                - points: List of (x,y) coordinates normalized to [0,1]
-                - label: "object_N" where N is the polygon index
-                - filled: True to render as filled polygon
-                - closed: True to connect first/last points
-            None: If no polygons were found in the parsed output
+                the extracted polygons, or None if no polygons were found
         """
-        # Extract list of polygons from model output
         polygons = parsed_answer[task]["polygons"]
         if not polygons:
             return None
@@ -323,40 +348,21 @@ class Florence2(Model):
         # Process each polygon
         for k, polygon in enumerate(polygons):
             # Process all contours for this polygon
-            all_contours = []
-            for contour in polygon:
-                # Separate interleaved x,y coordinates and normalize by image dimensions
-                x_points = [p for i, p in enumerate(contour) if i % 2 == 0]
-                y_points = [p for i, p in enumerate(contour) if i % 2 != 0]
-                x_points = [x / image.width for x in x_points]
-                y_points = [y / image.height for y in y_points]
-
-                # Convert to list of (x,y) tuples in a zigzag pattern
-                xy_points = []
-                curr_x = x_points[0]
-                curr_y = y_points[0]
-                xy_points.append((curr_x, curr_y))
-                
-                for i in range(1, len(x_points)):
-                    curr_x = x_points[i]
-                    xy_points.append((curr_x, curr_y))
-                    curr_y = y_points[i] 
-                    xy_points.append((curr_x, curr_y))
-
-                # Close the contour
-                xy_points.append((x_points[0], curr_y))
-                all_contours.append(xy_points)
+            all_contours = [
+                _convert_polyline(contour, image.width, image.height)
+                for contour in polygon
+            ]
 
             # Create FiftyOne Polyline object with all contours
             polylines.append(
                 Polyline(
-                    points=all_contours,  # Now includes all contours for this polygon
+                    points=all_contours,
                     label=f"object_{k+1}",
                     filled=True,
                     closed=True,
                 )
             )
-        # Return all polylines wrapped in a FiftyOne Polylines object
+
         return Polylines(polylines=polylines)
 
     def _predict_caption(self, image: Image.Image) -> str:
