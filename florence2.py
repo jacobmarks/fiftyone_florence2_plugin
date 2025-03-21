@@ -218,15 +218,21 @@ class Florence2(Model):
         # Set device
         self.device = get_device()
 
-        self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        self.torch_dtype = torch.float16 if torch.cuda.is_available() else None
 
         # Initialize model
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path, 
-            # attn_implementation="sdpa", 
-            trust_remote_code=True,
-            device_map=self.device,
-            torch_dtype=self.torch_dtype
+        if self.torch_dtype:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_path, 
+                trust_remote_code=True,
+                device_map=self.device,
+                torch_dtype=self.torch_dtype
+            )
+        else:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_path, 
+                trust_remote_code=True,
+                device_map=self.device
             )
 
         self.processor = AutoProcessor.from_pretrained(
@@ -265,10 +271,13 @@ class Florence2(Model):
             
         inputs = self.processor(text=text, images=image, return_tensors="pt")
         
-        # Move inputs to the device
+        # Move inputs to device without dtype casting for MPS/CPU
         for key in inputs:
             if torch.is_tensor(inputs[key]):
-                inputs[key] = inputs[key].to(self.device, self.torch_dtype)
+                if torch.cuda.is_available() and key == "pixel_values":
+                    inputs[key] = inputs[key].to(self.device, self.torch_dtype)
+                else:
+                    inputs[key] = inputs[key].to(self.device)
 
         generated_ids = self.model.generate(
             input_ids=inputs["input_ids"],
