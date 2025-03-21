@@ -17,7 +17,7 @@ from transformers.dynamic_module_utils import get_imports
 from transformers import AutoModelForCausalLM, AutoProcessor
 
 # Constants
-DEFAULT_MODEL_PATH = "microsoft/Florence-2-base"
+DEFAULT_MODEL_PATH = "microsoft/Florence-2-base-ft"
 
 # Task definitions and parameter configurations
 FLORENCE2_OPERATIONS = {
