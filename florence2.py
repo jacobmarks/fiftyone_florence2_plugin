@@ -20,7 +20,6 @@ DEFAULT_MODEL_PATH = "microsoft/Florence-2-base-ft"
 FLORENCE2_OPERATIONS = {
     "caption": {
         "params": {"detail_level": ["basic", "detailed", "more_detailed"]},
-        "required": [],
         "task_mapping": {
             "detailed": "<DETAILED_CAPTION>",
             "more_detailed": "<MORE_DETAILED_CAPTION>",
@@ -30,14 +29,12 @@ FLORENCE2_OPERATIONS = {
     },
     "ocr": {
         "params": {"store_region_info": bool},
-        "required": [],
         "task": "<OCR>",
         "region_task": "<OCR_WITH_REGION>"
     },
     "detection": {
         "params": {"detection_type": ["detection", "dense_region_caption", "region_proposal", "open_vocabulary_detection"],
                    "text_prompt": str},
-        "required": [],
         "task_mapping": {
             "detection": "<OD>",
             "dense_region_caption": "<DENSE_REGION_CAPTION>",
@@ -48,12 +45,10 @@ FLORENCE2_OPERATIONS = {
     },
     "phrase_grounding": {
         "params": {"caption_field": str, "caption": str},
-        "required": [],  # Will be validated in code
         "task": "<CAPTION_TO_PHRASE_GROUNDING>"
     },
     "segmentation": {
         "params": {"expression": str, "expression_field": str},
-        "required": [],  # Will be validated in code
         "task": "<REFERRING_EXPRESSION_SEGMENTATION>"
     }
 }
@@ -181,6 +176,7 @@ class Florence2(Model):
         model = Florence2(operation="phrase_grounding", caption_field="my_captions")
     """
 
+
     def __init__(
         self, 
         operation: str,
@@ -217,6 +213,7 @@ class Florence2(Model):
 
         # Set device
         self.device = get_device()
+        print(f"Using device: {self.device}")
 
         self.torch_dtype = torch.float16 if torch.cuda.is_available() else None
 
