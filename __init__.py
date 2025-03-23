@@ -13,15 +13,14 @@ from .ocr_operator import OCRWithFlorence2
 from .grounding_operator import CaptionToPhraseGroundingWithFlorence2
 from .segmentation_operator import ReferringExpressionSegmentationWithFlorence2
 
-
 def register(plugin):
     """Register operators with the plugin."""
     # Register individual task operators
-    plugin.register(CaptionWithFlorence2())
-    plugin.register(OCRWithFlorence2())
-    plugin.register(DetectWithFlorence2())
-    plugin.register(CaptionToPhraseGroundingWithFlorence2())
-    plugin.register(ReferringExpressionSegmentationWithFlorence2())
+    plugin.register(CaptionWithFlorence2)
+    plugin.register(OCRWithFlorence2)
+    plugin.register(DetectWithFlorence2)
+    plugin.register(CaptionToPhraseGroundingWithFlorence2)
+    plugin.register(ReferringExpressionSegmentationWithFlorence2)
     
 
 # For compatibility with previous versions
