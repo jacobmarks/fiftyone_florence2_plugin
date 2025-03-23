@@ -1,129 +1,150 @@
+# grounding_operator.py
+import os
+
 import fiftyone as fo
 import fiftyone.operators as foo
 from fiftyone.operators import types
 
-from .florence2 import  DEFAULT_MODEL_PATH
+from .florence2 import  DEFAULT_MODEL_PATH, run_florence2_model
 
-from .utils import _handle_calling, _BaseFlorence2Operator
+from .utils import  _model_choice_inputs, _execution_mode, _handle_calling
 
-# Specific operator classes
-class CaptionToPhraseGroundingWithFlorence2(_BaseFlorence2Operator):
-    """Operator for grounding phrases in captions with Florence-2."""
+
+class CaptionToPhraseGroundingWithFlorence2(foo.Operator):
     @property
     def config(self):
-        _config = foo.OperatorConfig(
+        return foo.OperatorConfig(
             name="caption_to_phrase_grounding_with_florence2",
-            label="Florence2: Ground phrases in captions with Florence-2",
+            label="Caption to Phrase Grounding with Florence-2",
+            description="Ground caption phrases in images using Florence-2",
+            icon="/assets/icon-grounding.svg",  # Placeholder icon
             dynamic=True,
         )
-        return _config
     
-    def _add_operation_inputs(self, ctx, inputs):
-        # Caption source
-        input_choices = ["caption_field", "caption"]
-        radio_group = types.RadioGroup()
-        for choice in input_choices:
-            radio_group.add_choice(choice, label=choice)
-
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        
+        # Model choice inputs
+        _model_choice_inputs(inputs)
+        
+        # Input source radio group
+        input_source_radio = types.RadioGroup()
+        input_source_radio.add_choice("direct", label="Direct Input")
+        input_source_radio.add_choice("field", label="From Field")
+        
         inputs.enum(
-            "caption_input",
-            radio_group.values(),
-            label="Caption input",
-            description="The input to use for grounding phrases",
-            required=True,
-            default="caption",
-            view=types.RadioView(),
+            "input_source",
+            values=input_source_radio.values(),
+            default="direct",
+            view=input_source_radio,
+            label="Caption Source",
+            description="Choose where to get the caption from"
         )
-
-        input_type = ctx.params.get("caption_input", None)
-        if input_type == "caption_field":
-            candidate_fields = list(
-                ctx.dataset.get_field_schema(ftype=fo.StringField).keys()
-            )
-            candidate_fields.remove("filepath")
-
-            field_radio_group = types.RadioGroup()
-
-            for field in candidate_fields:
-                field_radio_group.add_choice(field, label=field)
-
-            inputs.enum(
-                "caption_field",
-                field_radio_group.values(),
-                label="Caption field",
-                description="The field to use as the caption",
-                required=True,
-                view=types.DropdownView(),
-            )
-
-        else:
+        
+        # Conditional UI based on input source
+        input_source = ctx.params.get("input_source", "direct")
+        
+        if input_source == "direct":
             inputs.str(
                 "caption",
-                label="Caption",
-                description="The caption to use for grounding phrases",
+                default="",
                 required=True,
+                label="Caption",
+                description="Enter the caption to ground in the image"
             )
+        else:  # input_source == "field"
+            # Get available string fields from the dataset
+            string_fields = []
+            try:
+                if ctx.dataset:
+                    string_fields = ctx.dataset.get_field_schema(flat=True).keys()
+                    string_fields = [f for f in string_fields if ctx.dataset.get_field_type(f) == "string"]
+            except:
+                pass
             
-        # Phrase grounding field
-        inputs.str(
-            "phrase_grounding_field",
-            label="Phrase grounding field",
-            description="The field in which to store the grounded phrases",
-            required=False,
-        )
-    
-    def _get_operation_kwargs(self, ctx):
-        input_type = ctx.params.get("caption_input", "caption")
+            # Create dropdown for fields
+            field_dropdown = types.Dropdown(label="Caption Field")
+            for field in string_fields:
+                field_dropdown.add_choice(field, label=field)
+            
+            # Add field dropdown
+            inputs.enum(
+                "caption_field",
+                values=field_dropdown.values() if field_dropdown.values() else [""],
+                default=field_dropdown.values()[0] if field_dropdown.values() else "",
+                view=field_dropdown,
+                label="Caption Field",
+                description="Choose the field containing the captions"
+            )
         
-        if input_type == "caption_field":
-            return {
-                "caption_field": ctx.params.get("caption_field")
-            }
+        # Output field
+        inputs.str(
+            "output_field",
+            default="florence2_grounding",
+            required=True,
+            label="Output Field",
+            description="Name of the field to store the grounding results"
+        )
+        
+        # Execution mode (delegation option)
+        _execution_mode(inputs)
+        
+        inputs.view_target(ctx)
+        
+        return types.Property(inputs)
+    
+    def resolve_delegation(self, ctx):
+        return ctx.params.get("delegate", False)
+    
+    def execute(self, ctx):
+        view = ctx.target_view()
+        # Parameters
+        model_path = ctx.params.get("model_path", "microsoft/Florence-2-base-ft")
+        input_source = ctx.params.get("input_source")
+        output_field = ctx.params.get("output_field")
+        
+        kwargs = {}
+        if input_source == "direct":
+            caption = ctx.params.get("caption")
+            kwargs["caption"] = caption
         else:
-            return {
-                "caption": ctx.params.get("caption")
-            }
-            
+            caption_field = ctx.params.get("caption_field")
+            kwargs["caption_field"] = caption_field
+        
+        # Execute model
+        run_florence2_model(
+            dataset=view,
+            operation="phrase_grounding",
+            output_field=output_field,
+            model_path=model_path,
+            **kwargs
+        )
+        
+        ctx.ops.reload_dataset()
+        
     def __call__(
-        self, 
+        self,
         sample_collection,
-        output_field=None,
-        caption=None,  # Explicit parameter
-        caption_field=None,  # Explicit parameter
-        model_path=DEFAULT_MODEL_PATH,
+        model_path="microsoft/Florence-2-base-ft",
+        caption=None,
+        caption_field=None,
+        output_field="florence2_grounding",
         delegate=False
     ):
-        """Ground phrases in captions with Florence-2.
-        
-        Args:
-            sample_collection: FiftyOne dataset or view to process
-            output_field: Field to store grounding results in
-            caption: Direct caption text to use (provide either this or caption_field)
-            caption_field: Field containing captions to use (provide either this or caption)
-            model_path: Path to Florence-2 model
-            delegate: Whether to delegate execution
-            
-        Returns:
-            The operation result
-            
-        Raises:
-            ValueError: If neither caption nor caption_field is provided
-        """
-        if caption is None and caption_field is None:
-            raise ValueError("Either caption or caption_field must be provided")
-            
         kwargs = {}
-        if caption is not None:
+        if caption:
             kwargs["caption"] = caption
-        if caption_field is not None:
+        elif caption_field:
             kwargs["caption_field"] = caption_field
+        else:
+            raise ValueError("Either 'caption' or 'caption_field' must be provided")
             
         return _handle_calling(
             self.uri,
             sample_collection,
-            model_path,
-            self.operation,
-            output_field,
-            delegate,
+            operation="phrase_grounding",
+            output_field=output_field,
+            delegate=delegate,
+            model_path=model_path,
             **kwargs
         )

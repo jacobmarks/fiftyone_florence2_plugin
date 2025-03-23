@@ -155,7 +155,7 @@ class Florence2(Model):
         operation (str): Type of operation to perform. Must be one of: 
                         'caption', 'ocr', 'detection', 'phrase_grounding', 'segmentation'
         model_path (str, optional): Model path or HuggingFace repo name.
-                                   Defaults to "microsoft/Florence-2-base".
+                                   Defaults to "microsoft/Florence-2-base-ft".
         **kwargs: Operation-specific parameters:
             - caption: detail_level (str, optional) - "basic", "detailed", or "more_detailed"
             - ocr: store_region_info (bool, optional) - Whether to include region information
@@ -642,7 +642,7 @@ def run_florence2_model(
             - "segmentation": Perform instance segmentation
         output_field: Name of the field where results will be stored in the dataset
         model_path: HuggingFace model identifier or local path to model weights.
-            Defaults to "microsoft/Florence-2-base"
+            Defaults to "microsoft/Florence-2-base-ft"
         **kwargs: Additional operation-specific parameters:
             - caption_field: Field containing captions for phrase grounding
             - expression_field: Field containing expressions for segmentation

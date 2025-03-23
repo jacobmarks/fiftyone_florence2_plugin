@@ -1,109 +1,120 @@
+# detection_operator.py
+import os
+
 import fiftyone as fo
 import fiftyone.operators as foo
 from fiftyone.operators import types
 
-from .florence2 import  DEFAULT_MODEL_PATH
+from .florence2 import  DEFAULT_MODEL_PATH, run_florence2_model
 
-from .utils import _handle_calling, _BaseFlorence2Operator
+from .utils import  _model_choice_inputs, _execution_mode, _handle_calling
 
-# Specific operator classes
-class DetectWithFlorence2(_BaseFlorence2Operator):
-    """Operator for detecting objects with Florence-2."""
+class DetectWithFlorence2(foo.Operator):
     @property
     def config(self):
-        _config = foo.OperatorConfig(
+        return foo.OperatorConfig(
             name="detect_with_florence2",
-            label="Florence2: detect objects in images with Florence-2",
+            label="Detect with Florence-2",
+            description="Detect objects in images using Florence-2",
+            icon="/assets/icon-detection.svg",  # Placeholder icon
             dynamic=True,
         )
-        return _config
     
-    def _add_operation_inputs(self, ctx, inputs):
-        # Detection type
-        detection_task_choices = [
-            "detection",
-            "dense_region_caption",
-            "region_proposal",
-            "open_vocabulary_detection",
-        ]
-
-        radio_group = types.RadioGroup()
-        for choice in detection_task_choices:
-            radio_group.add_choice(choice, label=choice)
-
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        
+        # Model choice inputs
+        _model_choice_inputs(inputs)
+        
+        # Detection type dropdown
+        detection_type_dropdown = types.Dropdown(label="Detection Type")
+        detection_type_dropdown.add_choice("detection", label="Standard Object Detection")
+        detection_type_dropdown.add_choice("dense_region_caption", label="Dense Region Caption")
+        detection_type_dropdown.add_choice("region_proposal", label="Region Proposal")
+        detection_type_dropdown.add_choice("open_vocabulary_detection", label="Open Vocabulary Detection")
+        
         inputs.enum(
             "detection_type",
-            radio_group.values(),
-            label="Detection type",
-            description="The type of detection to perform",
-            required=False,
-            view=types.DropdownView(),
+            values=detection_type_dropdown.values(),
+            default="detection",
+            view=detection_type_dropdown,
+            label="Detection Type",
+            description="Choose the type of detection to perform"
         )
-
-        detection_task = ctx.params.get("detection_type", None)
-        if detection_task is None:
-            return
-
-        if detection_task == "open_vocabulary_detection":
-            inputs.str(
-                "text_prompt",
-                label="Text prompt",
-                description="What do you want to detect?",
-                required=True,
-            )
-            
-        # Detection field
-        inputs.str(
-            "detection_field",
-            label="Detection field",
-            description="The field in which to store the detection results",
-            required=False,
-        )
-    
-    def _get_operation_kwargs(self, ctx):
-        kwargs = {
-            "detection_type": ctx.params.get("detection_type", None)
-        }
         
-        if ctx.params.get("detection_type") == "open_vocabulary_detection":
-            kwargs["text_prompt"] = ctx.params.get("text_prompt", None)
-            
-        return kwargs
+        # Previous implementation used a conditional to show text_prompt only for open_vocabulary_detection,
+        # but since I don't see how to access the current value of detection_type in this context, I'll always show it
+        # and document when it's applicable
+        
+        inputs.str(
+            "text_prompt",
+            default="",
+            required=False,
+            label="Text Prompt",
+            description="Text prompt for Open Vocabulary Detection (only used when Detection Type is 'Open Vocabulary Detection')"
+        )
+        
+        # Output field
+        inputs.str(
+            "output_field",
+            default="florence2_detections",
+            required=True,
+            label="Output Field",
+            description="Name of the field to store the detection results"
+        )
+        
+        # Execution mode (delegation option)
+        _execution_mode(inputs)
+        
+        inputs.view_target(ctx)
+        
+        return types.Property(inputs)
+    
+    def resolve_delegation(self, ctx):
+        return ctx.params.get("delegate", False)
+    
+    def execute(self, ctx):
+        view = ctx.target_view()
+        # Parameters
+        model_path = ctx.params.get("model_path", "microsoft/Florence-2-base-ft")
+        detection_type = ctx.params.get("detection_type")
+        text_prompt = ctx.params.get("text_prompt")
+        output_field = ctx.params.get("output_field")
+        
+        kwargs = {"detection_type": detection_type}
+        if text_prompt and detection_type == "open_vocabulary_detection":
+            kwargs["text_prompt"] = text_prompt
+        
+        # Execute model
+        run_florence2_model(
+            dataset=view,
+            operation="detection",
+            output_field=output_field,
+            model_path=model_path,
+            **kwargs
+        )
+        
+        ctx.ops.reload_dataset()
         
     def __call__(
-        self, 
+        self,
         sample_collection,
-        output_field=None,
-        detection_type="detection",  # Explicit parameter
-        text_prompt=None,  # Explicit parameter
-        model_path=DEFAULT_MODEL_PATH,
+        model_path="microsoft/Florence-2-base-ft",
+        detection_type="detection",
+        text_prompt=None,
+        output_field="florence2_detections",
         delegate=False
     ):
-        """Detect objects in images using Florence-2.
-        
-        Args:
-            sample_collection: FiftyOne dataset or view to process
-            output_field: Field to store detection results in
-            detection_type: Type of detection to perform. Options: 
-                           "detection", "dense_region_caption", 
-                           "region_proposal", "open_vocabulary_detection"
-            text_prompt: Text prompt for what to detect (required for "open_vocabulary_detection")
-            model_path: Path to Florence-2 model
-            delegate: Whether to delegate execution
-            
-        Returns:
-            The operation result
-        """
         kwargs = {"detection_type": detection_type}
-        if text_prompt is not None:
+        if text_prompt and detection_type == "open_vocabulary_detection":
             kwargs["text_prompt"] = text_prompt
             
         return _handle_calling(
             self.uri,
             sample_collection,
-            model_path,
-            self.operation,
-            output_field,
-            delegate,
+            operation="detection",
+            output_field=output_field,
+            delegate=delegate,
+            model_path=model_path,
             **kwargs
         )
