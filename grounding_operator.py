@@ -9,6 +9,48 @@ from .florence2 import run_florence2_model
 
 from .utils import  _model_choice_inputs, _execution_mode, _handle_calling
 
+def _caption_inputs(ctx, inputs):
+    input_choices = ["caption_field", "caption"]
+    radio_group = types.RadioGroup()
+    for choice in input_choices:
+        radio_group.add_choice(choice, label=choice)
+
+    inputs.enum(
+        "caption_input",
+        radio_group.values(),
+        label="Caption input",
+        description="Please select an input to use for grounding phrases. This can be an existing Field on the Dataset or a custom caption",
+        default="caption",
+        view=types.RadioView(),
+    )
+
+    input_type = ctx.params.get("caption_input", None)
+    if input_type == "caption_field":
+        candidate_fields = list(
+            ctx.dataset.get_field_schema(ftype=fo.StringField).keys()
+        )
+        candidate_fields.remove("filepath")
+
+        field_radio_group = types.RadioGroup()
+
+        for field in candidate_fields:
+            field_radio_group.add_choice(field, label=field)
+
+        inputs.enum(
+            "caption_field",
+            field_radio_group.values(),
+            label="Caption field",
+            description="The field to use as the caption",
+            view=types.DropdownView(),
+        )
+
+    else:
+        inputs.str(
+            "caption",
+            label="Caption",
+            description="The caption to use for grounding phrases",
+        )
+
 class CaptionToPhraseGroundingWithFlorence2(foo.Operator):
     @property
     def config(self):
@@ -25,57 +67,9 @@ class CaptionToPhraseGroundingWithFlorence2(foo.Operator):
         
         # Model choice inputs
         _model_choice_inputs(ctx, inputs)
-        
-        # Input source radio group
-        input_source_radio = types.RadioGroup()
-        input_source_radio.add_choice("direct", label="Direct Input")
-        input_source_radio.add_choice("field", label="From Field")
-        
-        inputs.enum(
-            "input_source",
-            values=input_source_radio.values(),
-            default="direct",
-            view=input_source_radio,
-            label="Caption Source",
-            description="Choose where to get the caption from"
-        )
-        
-        # Conditional UI based on input source
-        input_source = ctx.params.get("input_source", "direct")
-        
-        if input_source == "direct":
-            inputs.str(
-                "caption",
-                default="",
-                required=True,
-                label="Caption",
-                description="Enter the caption to ground in the image"
-            )
-        else:  # input_source == "field"
-            # Get available string fields from the dataset
-            string_fields = []
-            try:
-                if ctx.dataset:
-                    string_fields = ctx.dataset.get_field_schema(flat=True).keys()
-                    string_fields = [f for f in string_fields if ctx.dataset.get_field_type(f) == "string"]
-            except:
-                pass
-            
-            # Create dropdown for fields
-            field_dropdown = types.Dropdown(label="Caption Field")
-            for field in string_fields:
-                field_dropdown.add_choice(field, label=field)
-            
-            # Add field dropdown
-            inputs.enum(
-                "caption_field",
-                values=field_dropdown.values() if field_dropdown.values() else [""],
-                default=field_dropdown.values()[0] if field_dropdown.values() else "",
-                view=field_dropdown,
-                label="Caption Field",
-                description="Choose the field containing the captions"
-            )
-        
+
+        _caption_inputs(ctx, inputs)
+
         # Output field
         inputs.str(
             "output_field",

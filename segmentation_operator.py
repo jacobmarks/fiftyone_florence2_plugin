@@ -9,6 +9,48 @@ from .florence2 import run_florence2_model
 
 from .utils import  _model_choice_inputs, _execution_mode, _handle_calling
 
+def _referring_expression_inputs(ctx, inputs):
+    input_choices = ["from_field", "direct"]
+    radio_group = types.RadioGroup()
+    for choice in input_choices:
+        radio_group.add_choice(choice, label=choice)
+
+    inputs.enum(
+        "expression_input",
+        radio_group.values(),
+        label="Referring expression input",
+        description="The referring expression to use for segmentation",
+        default="expression",
+        view=types.RadioView(),
+    )
+
+    input_type = ctx.params.get("expression_input", None)
+    if input_type == "from_field":
+        candidate_fields = list(
+            ctx.dataset.get_field_schema(ftype=fo.StringField).keys()
+        )
+        candidate_fields.remove("filepath")
+
+        field_radio_group = types.RadioGroup()
+
+        for field in candidate_fields:
+            field_radio_group.add_choice(field, label=field)
+
+        inputs.enum(
+            "expression_field",
+            field_radio_group.values(),
+            label="Expression field",
+            description="The field to use as the referring expression",
+            view=types.DropdownView(),
+        )
+
+    else:
+        inputs.str(
+            "expression",
+            label="Referring expression",
+            description="The referring expression to use for segmentation",
+        )
+
 class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
     @property
     def config(self):
@@ -25,56 +67,7 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
         
         # Model choice inputs
         _model_choice_inputs(ctx, inputs)
-        
-        # Input source radio group
-        input_source_radio = types.RadioGroup()
-        input_source_radio.add_choice("direct", label="Direct Input")
-        input_source_radio.add_choice("field", label="From Field")
-        
-        inputs.enum(
-            "input_source",
-            values=input_source_radio.values(),
-            default="direct",
-            view=input_source_radio,
-            label="Expression Source",
-            description="Choose where to get the referring expression from"
-        )
-        
-        # Conditional UI based on input source
-        input_source = ctx.params.get("input_source", "direct")
-        
-        if input_source == "direct":
-            inputs.str(
-                "expression",
-                default="",
-                required=True,
-                label="Referring Expression",
-                description="Enter the textual description of the object to segment"
-            )
-        else:  # input_source == "field"
-            # Get available string fields from the dataset
-            string_fields = []
-            try:
-                if ctx.dataset:
-                    string_fields = ctx.dataset.get_field_schema(flat=True).keys()
-                    string_fields = [f for f in string_fields if ctx.dataset.get_field_type(f) == "string"]
-            except:
-                pass
-            
-            # Create dropdown for fields
-            field_dropdown = types.Dropdown(label="Expression Field")
-            for field in string_fields:
-                field_dropdown.add_choice(field, label=field)
-            
-            # Add field dropdown
-            inputs.enum(
-                "expression_field",
-                values=field_dropdown.values() if field_dropdown.values() else [""],
-                default=field_dropdown.values()[0] if field_dropdown.values() else "",
-                view=field_dropdown,
-                label="Expression Field",
-                description="Choose the field containing the referring expressions"
-            )
+        _referring_expression_inputs(ctx, inputs)
         
         # Output field
         inputs.str(
