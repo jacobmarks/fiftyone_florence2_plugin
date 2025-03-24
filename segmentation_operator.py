@@ -93,16 +93,15 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
         # Parameters
         model_path = ctx.params.get("model_path", "microsoft/Florence-2-base-ft")
         output_field = ctx.params.get("output_field")
-        expression_input = ctx.params.get("expression_input")
         
         kwargs = {}
-        if expression_input == "direct":
-            expression = ctx.params.get("expression")
-            kwargs["expression"] = expression
+        # Simply check for each parameter directly
+        if ctx.params.get("expression") is not None:
+            kwargs["expression"] = ctx.params.get("expression")
+        elif ctx.params.get("expression_field") is not None:
+            kwargs["expression_field"] = ctx.params.get("expression_field")
         else:
-            # Fix this line - don't reuse expression_input variable
-            expression_field = ctx.params.get("expression_field")
-            kwargs["expression_field"] = expression_field
+            raise ValueError("Either 'expression' or 'expression_field' must be provided")
         
         # Execute model
         run_florence2_model(

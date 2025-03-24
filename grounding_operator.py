@@ -25,6 +25,7 @@ def _caption_inputs(ctx, inputs):
     )
 
     input_type = ctx.params.get("caption_input", None)
+
     if input_type == "caption_field":
         candidate_fields = list(
             ctx.dataset.get_field_schema(ftype=fo.StringField).keys()
@@ -93,16 +94,16 @@ class CaptionToPhraseGroundingWithFlorence2(foo.Operator):
         view = ctx.target_view()
         # Parameters
         model_path = ctx.params.get("model_path", "microsoft/Florence-2-base-ft")
-        caption_input = ctx.params.get("caption_input") 
         output_field = ctx.params.get("output_field")
         
         kwargs = {}
-        if caption_input == "direct":  # Changed from input_source to caption_input
-            caption = ctx.params.get("caption")
-            kwargs["caption"] = caption
+        # Simply check for each parameter directly
+        if ctx.params.get("caption") is not None:
+            kwargs["caption"] = ctx.params.get("caption")
+        elif ctx.params.get("caption_field") is not None:
+            kwargs["caption_field"] = ctx.params.get("caption_field")
         else:
-            caption_field = ctx.params.get("caption_field")
-            kwargs["caption_field"] = caption_field
+            raise ValueError("Either 'caption' or 'caption_field' must be provided")
         
         # Execute model
         run_florence2_model(
