@@ -41,11 +41,7 @@ class DetectWithFlorence2(foo.Operator):
             label="Detection Type",
             description="Choose the type of detection to perform"
         )
-        
-        # Previous implementation used a conditional to show text_prompt only for open_vocabulary_detection,
-        # but since I don't see how to access the current value of detection_type in this context, I'll always show it
-        # and document when it's applicable
-        
+
         inputs.str(
             "text_prompt",
             default="",

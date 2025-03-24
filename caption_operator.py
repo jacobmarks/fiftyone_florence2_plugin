@@ -24,7 +24,7 @@ class CaptionWithFlorence2(foo.Operator):
         inputs = types.Object()
         
         # Model choice inputs
-        _model_choice_inputs(self, ctx, inputs)
+        _model_choice_inputs(ctx, inputs)
         
         # Detail level dropdown
         detail_level_dropdown = types.RadioGroup()
@@ -51,7 +51,7 @@ class CaptionWithFlorence2(foo.Operator):
         )
         
         # Execution mode (delegation option)
-        _execution_mode(inputs)
+        _execution_mode(ctx, inputs)
         
         inputs.view_target(ctx)
         
