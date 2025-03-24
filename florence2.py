@@ -643,58 +643,94 @@ def run_florence2_model(
         output_field: Name of the field where results will be stored in the dataset
         model_path: HuggingFace model identifier or local path to model weights.
             Defaults to "microsoft/Florence-2-base-ft"
-        **kwargs: Additional operation-specific parameters:
-            - caption_field: Field containing captions for phrase grounding
-            - expression_field: Field containing expressions for segmentation
-    
-    Note:
-        For phrase_grounding and segmentation operations that require per-sample text input,
-        the relevant text must be stored in dataset fields specified via kwargs.
+        **kwargs: Additional operation-specific parameters
     """
-    # Special handling for operations that require per-sample text input from dataset fields
-    if operation == "phrase_grounding" and "caption_field" in kwargs:
-        # Initialize model for phrase grounding with the caption field name
-        model = Florence2(
-            operation=operation,
-            model_path=model_path,
-            caption_field=kwargs["caption_field"]
-        )
-        
-        # Process each sample individually to use its specific caption
-        for sample in dataset.iter_samples(autosave=True):
-            # Extract caption from the specified field
-            caption = sample[kwargs["caption_field"]]
-            # Update model parameters with this sample's caption
-            model.params["caption"] = caption
-            # Load and convert image to RGB numpy array
-            result = model.predict(np.array(Image.open(sample.filepath).convert("RGB")))
-            # Store results in the specified output field
-            sample[output_field] = result
+    # Handle phrase_grounding operation
+    if operation == "phrase_grounding":
+        if "caption" in kwargs:
+            # Handle direct caption input
+            model = Florence2(
+                operation=operation,
+                model_path=model_path,
+                caption=kwargs["caption"]
+            )
+            # Apply model to entire dataset at once
+            dataset.apply_model(model, label_field=output_field)
             
-    elif operation == "segmentation" and "expression_field" in kwargs:
-        # Initialize model for segmentation with the expression field name
+        elif "caption_field" in kwargs:
+            # Handle per-sample captions from field
+            model = Florence2(
+                operation=operation,
+                model_path=model_path,
+                caption_field=kwargs["caption_field"]
+            )
+            
+            for sample in dataset.iter_samples(autosave=True):
+                caption = sample[kwargs["caption_field"]]
+                model.params["caption"] = caption
+                result = model.predict(np.array(Image.open(sample.filepath).convert("RGB")))
+                sample[output_field] = result
+                
+        else:
+            raise ValueError("Either 'caption' or 'caption_field' must be provided for phrase_grounding")
+            
+    # Handle segmentation operation    
+    elif operation == "segmentation":
+        if "expression" in kwargs:
+            # Handle direct expression input
+            model = Florence2(
+                operation=operation,
+                model_path=model_path,
+                expression=kwargs["expression"]
+            )
+            # Apply model to entire dataset at once
+            dataset.apply_model(model, label_field=output_field)
+            
+        elif "expression_field" in kwargs:
+            # Handle per-sample expressions from field
+            model = Florence2(
+                operation=operation,
+                model_path=model_path,
+                expression_field=kwargs["expression_field"]
+            )
+            
+            for sample in dataset.iter_samples(autosave=True):
+                expression = sample[kwargs["expression_field"]]
+                model.params["expression"] = expression
+                result = model.predict(np.array(Image.open(sample.filepath).convert("RGB")))
+                sample[output_field] = result
+                
+        else:
+            raise ValueError("Either 'expression' or 'expression_field' must be provided for segmentation")
+    
+    # Handle detection operation with its specific parameters
+    elif operation == "detection":
+        # Create model with all detection parameters
         model = Florence2(
             operation=operation,
             model_path=model_path,
-            expression_field=kwargs["expression_field"]
+            **kwargs  # This passes detection_type and text_prompt if present
         )
+        # Apply model to entire dataset at once
+        dataset.apply_model(model, label_field=output_field)
         
-        # Process each sample individually to use its specific expression
-        for sample in dataset.iter_samples(autosave=True):
-            # Extract expression from the specified field
-            expression = sample[kwargs["expression_field"]]
-            # Update model parameters with this sample's expression
-            model.params["expression"] = expression
-            # Load and convert image to RGB numpy array
-            result = model.predict(np.array(Image.open(sample.filepath).convert("RGB")))
-            # Store results in the specified output field
-            sample[output_field] = result
+    # Handle OCR operation with its specific parameters
+    elif operation == "ocr":
+        # Create model with all OCR parameters
+        model = Florence2(
+            operation=operation,
+            model_path=model_path,
+            **kwargs  # This passes store_region_info if present
+        )
+        # Apply model to entire dataset at once
+        dataset.apply_model(model, label_field=output_field)
+        
+    # Handle caption and other operations
     else:
-        # For operations without per-sample parameters, use FiftyOne's built-in apply_model
+        # Generic case for other operations
         model = Florence2(
             operation=operation,
             model_path=model_path,
             **kwargs
         )
-        # Process entire dataset at once using apply_model
         dataset.apply_model(model, label_field=output_field)
