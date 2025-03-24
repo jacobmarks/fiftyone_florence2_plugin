@@ -36,8 +36,7 @@ class DetectWithFlorence2(foo.Operator):
         inputs.enum(
             "detection_type",
             values=detection_type_dropdown.values(),
-            default="detection",
-            view=detection_type_dropdown,
+            view=types.DropdownView(),
             label="Detection Type",
             description="Choose the type of detection to perform"
         )
