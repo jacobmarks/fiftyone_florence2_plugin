@@ -16,7 +16,7 @@ class CaptionWithFlorence2(foo.Operator):
             name="caption_with_florence2",
             label="Caption with Florence-2",
             description="Generate image captions using Florence-2",
-            icon="/assets/icon-caption.svg",  # Placeholder icon
+            icon="/assets/santa-maria-del-fiore-svgrepo-com.svg",
             dynamic=True,
         )
     

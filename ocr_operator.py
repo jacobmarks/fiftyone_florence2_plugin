@@ -16,7 +16,7 @@ class OCRWithFlorence2(foo.Operator):
             name="ocr_with_florence2",
             label="OCR with Florence-2",
             description="Perform optical character recognition using Florence-2",
-            icon="/assets/icon-ocr.svg",  # Placeholder icon
+            icon="/assets/santa-maria-del-fiore-svgrepo-com.svg",
             dynamic=True,
         )
     

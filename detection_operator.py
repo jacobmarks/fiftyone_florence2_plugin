@@ -16,7 +16,7 @@ class DetectWithFlorence2(foo.Operator):
             name="detect_with_florence2",
             label="Detect with Florence-2",
             description="Detect objects in images using Florence-2",
-            icon="/assets/icon-detection.svg",  # Placeholder icon
+            icon="/assets/santa-maria-del-fiore-svgrepo-com.svg",
             dynamic=True,
         )
     

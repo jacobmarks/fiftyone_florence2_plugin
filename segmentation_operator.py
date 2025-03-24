@@ -16,7 +16,7 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
             name="referring_expression_segmentation_with_florence2",
             label="Referring Expression Segmentation with Florence-2",
             description="Segment objects based on textual descriptions using Florence-2",
-            icon="/assets/icon-segmentation.svg",  # Placeholder icon
+            icon="/assets/santa-maria-del-fiore-svgrepo-com.svg",
             dynamic=True,
         )
     

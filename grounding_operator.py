@@ -16,7 +16,7 @@ class CaptionToPhraseGroundingWithFlorence2(foo.Operator):
             name="caption_to_phrase_grounding_with_florence2",
             label="Caption to Phrase Grounding with Florence-2",
             description="Ground caption phrases in images using Florence-2",
-            icon="/assets/icon-grounding.svg",  # Placeholder icon
+            icon="/assets/santa-maria-del-fiore-svgrepo-com.svg",
             dynamic=True,
         )
     
