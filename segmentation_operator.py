@@ -5,10 +5,9 @@ import fiftyone as fo
 import fiftyone.operators as foo
 from fiftyone.operators import types
 
-from .florence2 import  DEFAULT_MODEL_PATH, run_florence2_model
+from .florence2 import run_florence2_model
 
 from .utils import  _model_choice_inputs, _execution_mode, _handle_calling
-
 
 class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
     @property
@@ -25,7 +24,7 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
         inputs = types.Object()
         
         # Model choice inputs
-        _model_choice_inputs(inputs)
+        _model_choice_inputs(ctx, inputs)
         
         # Input source radio group
         input_source_radio = types.RadioGroup()
@@ -87,7 +86,7 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
         )
         
         # Execution mode (delegation option)
-        _execution_mode(inputs)
+        _execution_mode(ctx, inputs)
         
         inputs.view_target(ctx)
         

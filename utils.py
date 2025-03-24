@@ -5,8 +5,6 @@ import fiftyone as fo
 import fiftyone.operators as foo
 from fiftyone.operators import types
 
-from .florence2 import run_florence2_model, DEFAULT_MODEL_PATH
-
 # Common UI utilities
 def _model_choice_inputs(ctx, inputs):
     model_paths = [
