@@ -35,7 +35,6 @@ class CaptionWithFlorence2(foo.Operator):
         inputs.enum(
             "detail_level",
             values=detail_level_dropdown.values(),
-            default="basic",
             view=detail_level_dropdown,
             label="Caption Detail Level",
             description="Choose the level of detail for the caption"

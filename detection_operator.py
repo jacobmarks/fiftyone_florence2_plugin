@@ -9,6 +9,45 @@ from .florence2 import run_florence2_model
 
 from .utils import  _model_choice_inputs, _execution_mode, _handle_calling
 
+def _detection_label_field_inputs(inputs):
+    inputs.str(
+        "label_field",
+        label="Label field",
+        description="The field in which to store the detection results",
+    )
+
+
+def _detection_task_choice_inputs(ctx, inputs):
+    detection_task_choices = [
+        "detection",
+        "dense_region_caption",
+        "region_proposal",
+        "open_vocabulary_detection",
+    ]
+
+    radio_group = types.RadioGroup()
+    for choice in detection_task_choices:
+        radio_group.add_choice(choice, label=choice)
+
+    inputs.enum(
+        "detection_type",
+        radio_group.values(),
+        label="Detection type",
+        description="The type of detection to perform",
+        view=types.DropdownView(),
+    )
+
+    detection_task = ctx.params.get("detection_type", None)
+    if detection_task is None:
+        return
+
+    if detection_task == "open_vocabulary_detection":
+        inputs.str(
+            "text_prompt",
+            label="Text prompt",
+            description="What do you want to detect?",
+        )
+
 class DetectWithFlorence2(foo.Operator):
     @property
     def config(self):
@@ -26,29 +65,8 @@ class DetectWithFlorence2(foo.Operator):
         # Model choice inputs
         _model_choice_inputs(ctx, inputs)
         
-        # Detection type dropdown
-        detection_type_dropdown = types.Dropdown(label="Detection Type")
-        detection_type_dropdown.add_choice("detection", label="Standard Object Detection")
-        detection_type_dropdown.add_choice("dense_region_caption", label="Dense Region Caption")
-        detection_type_dropdown.add_choice("region_proposal", label="Region Proposal")
-        detection_type_dropdown.add_choice("open_vocabulary_detection", label="Open Vocabulary Detection")
-        
-        inputs.enum(
-            "detection_type",
-            values=detection_type_dropdown.values(),
-            view=types.DropdownView(),
-            label="Detection Type",
-            description="Choose the type of detection to perform"
-        )
+        _detection_task_choice_inputs(ctx, inputs)
 
-        inputs.str(
-            "text_prompt",
-            default="",
-            required=False,
-            label="Text Prompt",
-            description="Text prompt for Open Vocabulary Detection (only used when Detection Type is 'Open Vocabulary Detection')"
-        )
-        
         # Output field
         inputs.str(
             "output_field",
