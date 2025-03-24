@@ -1,5 +1,7 @@
 ## 🏛️ Florence-2 Plugin
 
+![florence2_plugin_demo](assets/florence2-plugin.gif)
+
 ### Plugin Overview
 
 This plugin allows you to apply Florence-2 directly to your FiftyOne datasets.
