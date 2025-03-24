@@ -92,14 +92,15 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
         view = ctx.target_view()
         # Parameters
         model_path = ctx.params.get("model_path", "microsoft/Florence-2-base-ft")
-        input_source = ctx.params.get("input_source")
         output_field = ctx.params.get("output_field")
+        expression_input = ctx.params.get("expression_input")
         
         kwargs = {}
-        if input_source == "direct":
+        if expression_input == "direct":
             expression = ctx.params.get("expression")
             kwargs["expression"] = expression
         else:
+            # Fix this line - don't reuse expression_input variable
             expression_field = ctx.params.get("expression_field")
             kwargs["expression_field"] = expression_field
         
@@ -113,7 +114,7 @@ class ReferringExpressionSegmentationWithFlorence2(foo.Operator):
         )
         
         ctx.ops.reload_dataset()
-        
+            
     def __call__(
         self,
         sample_collection,

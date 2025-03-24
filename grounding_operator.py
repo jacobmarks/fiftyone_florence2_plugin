@@ -93,11 +93,11 @@ class CaptionToPhraseGroundingWithFlorence2(foo.Operator):
         view = ctx.target_view()
         # Parameters
         model_path = ctx.params.get("model_path", "microsoft/Florence-2-base-ft")
-        input_source = ctx.params.get("input_source")
+        caption_input = ctx.params.get("caption_input") 
         output_field = ctx.params.get("output_field")
         
         kwargs = {}
-        if input_source == "direct":
+        if caption_input == "direct":  # Changed from input_source to caption_input
             caption = ctx.params.get("caption")
             kwargs["caption"] = caption
         else:
