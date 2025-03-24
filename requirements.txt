@@ -1,0 +1,6 @@
+fiftyone
+transformers<=4.49
+torch
+einops 
+timm
+accelerate
