@@ -1,4 +1,4 @@
-## Florence-2 Plugin
+## 🏛️ Florence-2 Plugin
 
 ### Plugin Overview
 
@@ -9,7 +9,7 @@ This plugin allows you to apply Florence-2 directly to your FiftyOne datasets.
 If you haven't already, install FiftyOne:
 
 ```shell
-pip install -U fiftyone transformers accelerate
+pip install -U fiftyone transformers<=4.49 accelerate einops timm torch 
 ```
 
 Then, install the plugin:
@@ -18,29 +18,45 @@ Then, install the plugin:
 fiftyone plugins download https://github.com/jacobmarks/fiftyone_florence2_plugin
 ```
 
-## Operators
+You can also install requirements via:
 
-### `caption_with_florence2`
+```shell
+fiftyone plugins requirements @jacbobmarks/florence2 --install
+```
 
-Generate captions in three levels of detail
+The Florence-2 plugin integrates Microsoft's Florence-2 Vision-Language Model with FiftyOne datasets, offering several powerful computer vision capabilities:
 
-### `detect_with_florence2`
+1. **Caption Generation** (`CaptionWithFlorence2`)
+   - Generates image captions with different levels of detail
+   - Customizable output field names
+   - Supports both immediate and delegated execution
 
-- Detect objects using Florence-2's default classes
-- Dense region captioning
-- Open vocabulary object detection with text input
-- Region proposals
+2. **Object Detection** (`DetectWithFlorence2`)
+   - Multiple detection modes:
+     - Standard object detection with default classes
+     - Dense region captioning
+     - Open vocabulary detection with custom text prompts
+     - Region proposals
+   - Flexible output field configuration
 
-### `ocr_with_florence2`
+3. **OCR** (`OCRWithFlorence2`)
+   - Performs text detection in images
+   - Option to store region information (bounding boxes)
+   - Configurable output fields
 
-- Detect text in images, with or without bounding boxes
+4. **Caption-to-Phrase Grounding** (`CaptionToPhraseGroundingWithFlorence2`)
+   - Grounds specific phrases or captions by detecting relevant objects
+   - Supports both direct text input and existing string fields from the dataset
 
-### `caption_to_phrase_grounding_with_florence2`
+5. **Referring Expression Segmentation** (`ReferringExpressionSegmentationWithFlorence2`)
+   - Performs segmentation based on textual descriptions
+   - Accepts either direct text input or references to existing dataset fields
+   - Outputs segmentation masks for the described objects
 
-- Ground an input phrase (caption) by detecting the relevant objects in the image. You can either specify the caption directly or use any `fo.StringField` on the dataset as the caption field.
+All operators support:
+- Custom model paths (defaults to "microsoft/Florence-2-base-ft")
+- Delegated execution for resource-intensive tasks
+- Flexible output field naming
+- Integration with FiftyOne's dataset operations
 
-### `referring_expression_segmentation_with_florence2`
-
-- Segment the image based on the input referring expression. You can either specify the expression directly or use any `fo.StringField` on the dataset as the expression field.
-
-Happy exploring!
+### ℹ👨🏽‍💻 Refer to the [examples notebook](example_sdk_operators.ipynb) for detailed examples for how to run each operator via the FiftyOne SDK!
