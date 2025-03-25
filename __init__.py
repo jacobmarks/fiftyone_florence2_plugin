@@ -22,12 +22,71 @@ def register(plugin):
     plugin.register(ReferringExpressionSegmentationWithFlorence2)
     
 
-# For compatibility with previous versions
-def florence2_activator():
-    """Check if required dependencies are installed."""
-    from importlib.util import find_spec
-    return (find_spec("transformers") is not None and 
-            find_spec("einops") is not None and 
-            find_spec("timm") is not None and 
-            find_spec("torch") is not None and
-            find_spec("PIL") is not None)
+#### Remote model zoo functionality
+import torch 
+from huggingface_hub import snapshot_download
+from transformers import AutoModelForCausalLM, AutoProcessor
+
+def download_model(model_name, model_path):
+    """Downloads the model.
+
+    Args:
+        model_name: the name of the model to download, as declared by the
+            ``base_name`` and optional ``version`` fields of the manifest
+        model_path: the absolute filename or directory to which to download the
+            model, as declared by the ``base_filename`` field of the manifest
+    """
+    snapshot_download(repo_id=model_name, local_dir=model_path)
+
+
+def load_model(model_name, model_path, **kwargs):
+    """Loads the model.
+
+    Args:
+        model_name: the name of the model to load, as declared by the
+            ``base_name`` and optional ``version`` fields of the manifest
+        model_path: the absolute filename or directory to which the model was
+            donwloaded, as declared by the ``base_filename`` field of the
+            manifest
+        **kwargs: optional keyword arguments that configure how the model
+            is loaded
+
+    Returns:
+        a :class:`fiftyone.core.models.Model`
+    """
+
+    # The directory containing this file
+    model_dir = os.path.dirname(model_path)
+
+    if torch.cuda.is_available():
+        device="cuda"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device="mps"
+    else:
+        device="cpu"
+    
+    print(f"Using device: {device}")
+
+    torch_dtype = torch.float16 if torch.cuda.is_available() else None
+
+    # Initialize model
+    if torch_dtype:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, 
+            trust_remote_code=True,
+            device_map=device,
+            torch_dtype=torch_dtype
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, 
+            trust_remote_code=True,
+            device_map=device
+        )
+
+    processor = AutoProcessor.from_pretrained(
+        model_path, 
+        trust_remote_code=True
+    )
+
+    return model, processor
