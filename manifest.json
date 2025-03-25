@@ -18,7 +18,7 @@
             ],
             "date_added": "2025-03-25",
             "requirements": {
-                "packages": ["huggingface-hub","transformers<=4.49", "torch", "torchvision", "einops", "timm", "accelerate"],
+                "packages": ["huggingface-hub","transformers", "torch", "torchvision", "einops", "timm", "accelerate"],
                 "cpu": {
                     "support": true
                 },
@@ -43,7 +43,7 @@
             ],
             "date_added": "2025-03-25",
             "requirements": {
-                "packages": ["huggingface-hub", "transformers<=4.49", "torch", "torchvision", "einops", "timm", "accelerate"],
+                "packages": ["huggingface-hub", "transformers", "torch", "torchvision", "einops", "timm", "accelerate"],
                 "cpu": {
                     "support": true
                 },
@@ -68,7 +68,7 @@
             ],
             "date_added": "2025-03-25",
             "requirements": {
-                "packages": ["huggingface-hub", "transformers<=4.49", "torch", "torchvision", "einops", "timm", "accelerate"],
+                "packages": ["huggingface-hub", "transformers", "torch", "torchvision", "einops", "timm", "accelerate"],
                 "cpu": {
                     "support": true
                 },
@@ -93,7 +93,7 @@
             ],
             "date_added": "2025-03-25",
             "requirements": {
-                "packages": ["huggingface-hub", "transformers<=4.49", "torch", "torchvision", "einops", "timm", "accelerate"],
+                "packages": ["huggingface-hub", "transformers", "torch", "torchvision", "einops", "timm", "accelerate"],
                 "cpu": {
                     "support": true
                 },
