@@ -23,9 +23,10 @@ def register(plugin):
     
 
 #### Remote model zoo functionality
+
 import torch 
 from huggingface_hub import snapshot_download
-from transformers import AutoModelForCausalLM, AutoProcessor
+from .florence2 import Florence2
 
 def download_model(model_name, model_path):
     """Downloads the model.
@@ -36,8 +37,8 @@ def download_model(model_name, model_path):
         model_path: the absolute filename or directory to which to download the
             model, as declared by the ``base_filename`` field of the manifest
     """
-    snapshot_download(repo_id=model_name, local_dir=model_path)
-
+    # snapshot_download(repo_id=model_name, local_dir=model_path)
+    pass
 
 def load_model(model_name, model_path, **kwargs):
     """Loads the model.
@@ -46,47 +47,31 @@ def load_model(model_name, model_path, **kwargs):
         model_name: the name of the model to load, as declared by the
             ``base_name`` and optional ``version`` fields of the manifest
         model_path: the absolute filename or directory to which the model was
-            donwloaded, as declared by the ``base_filename`` field of the
+            downloaded, as declared by the ``base_filename`` field of the
             manifest
-        **kwargs: optional keyword arguments that configure how the model
-            is loaded
+        **kwargs: must include 'operation' parameter and any other operation-specific
+            parameters required by Florence2
 
     Returns:
         a :class:`fiftyone.core.models.Model`
+
+    Raises:
+        ValueError: if 'operation' is not provided in kwargs or is invalid
     """
+    if 'operation' not in kwargs:
+        raise ValueError("'operation' parameter is required for Florence2 model")
 
-    # The directory containing this file
-    model_dir = os.path.dirname(model_path)
-
-    if torch.cuda.is_available():
-        device="cuda"
-    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        device="mps"
-    else:
-        device="cpu"
+    valid_operations = ["caption", "ocr", "detection", "phrase_grounding", "segmentation"]
+    operation = kwargs['operation']
     
-    print(f"Using device: {device}")
-
-    torch_dtype = torch.float16 if torch.cuda.is_available() else None
-
-    # Initialize model
-    if torch_dtype:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path, 
-            trust_remote_code=True,
-            device_map=device,
-            torch_dtype=torch_dtype
-        )
-    else:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path, 
-            trust_remote_code=True,
-            device_map=device
+    if operation not in valid_operations:
+        raise ValueError(
+            f"Invalid operation '{operation}'. Must be one of: {', '.join(valid_operations)}"
         )
 
-    processor = AutoProcessor.from_pretrained(
-        model_path, 
-        trust_remote_code=True
+    model = Florence2(
+        model_path=model_path,
+        **kwargs
     )
 
-    return model, processor
+    return model
