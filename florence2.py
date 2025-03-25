@@ -442,7 +442,7 @@ class Florence2(Model):
             return parsed_answer[task]
 
     def _predict_detection(self, image: Image.Image) -> Detections:
-        """Detect objects in an image using the Florence-2 model.
+        """Detect objects in an image using the Florence2 model.
         
         This method performs object detection on the input image. It supports two modes:
         1. Open vocabulary detection - Detects common objects without specific prompting
@@ -464,7 +464,7 @@ class Florence2(Model):
         detection_type = self.params.get("detection_type", None)
         text_prompt = self.params.get("text_prompt", None)
         
-        # Look up the appropriate Florence-2 task based on detection_type
+        # Look up the appropriate Florence2 task based on detection_type
         task_mapping = FLORENCE2_OPERATIONS["detection"]["task_mapping"]
         task = task_mapping.get(detection_type, task_mapping[None])  # Fall back to default if type not found
         
@@ -475,7 +475,7 @@ class Florence2(Model):
         return self._extract_detections(parsed_answer, task, image)
 
     def _predict_phrase_grounding(self, image: Image.Image) -> Detections:
-        """Ground caption phrases in an image using the Florence-2 model.
+        """Ground caption phrases in an image using the Florence2 model.
         
         This method performs phrase grounding by identifying regions in the image that
         correspond to specific phrases from a caption. It can use either a direct caption
@@ -533,7 +533,7 @@ class Florence2(Model):
             - expression: Direct text string describing the object to segment
             - expression_field: Name of sample field containing the referring expression
         """
-        # Get the segmentation task configuration from Florence-2 operations
+        # Get the segmentation task configuration from Florence2 operations
         task = FLORENCE2_OPERATIONS["segmentation"]["task"]
         
         # Determine the referring expression - either direct text or field reference
@@ -554,7 +554,7 @@ class Florence2(Model):
         return self._extract_polylines(parsed_answer, task, image)
 
     def _predict(self, image: Image.Image) -> Any:
-        """Process a single image with Florence-2 model.
+        """Process a single image with Florence2 model.
         
         This internal method handles routing the image to the appropriate prediction
         method based on the operation type (caption, OCR, detection, etc.) that was 
@@ -593,7 +593,7 @@ class Florence2(Model):
         return predict_method(image)
 
     def predict(self, image: np.ndarray) -> Any:
-        """Process an image array with Florence-2 model.
+        """Process an image array with Florence2 model.
         
         This method serves as the main entry point when using FiftyOne's apply_model functionality.
         It converts the input numpy array to a PIL Image and routes it through the internal 
@@ -614,7 +614,7 @@ class Florence2(Model):
             The specific return type depends on which operation was specified when initializing
             the Florence2 class.
         """
-        # Convert numpy array to PIL Image format required by Florence-2
+        # Convert numpy array to PIL Image format required by Florence2
         pil_image = Image.fromarray(image)
         
         # Route through internal prediction pipeline
@@ -627,9 +627,9 @@ def run_florence2_model(
     model_path: str = DEFAULT_MODEL_PATH,
     **kwargs
 ) -> None:
-    """Apply Florence-2 operations to a FiftyOne dataset.
+    """Apply Florence2 operations to a FiftyOne dataset.
     
-    This function processes a FiftyOne dataset using the Florence-2 model, supporting
+    This function processes a FiftyOne dataset using the Florence2 model, supporting
     various vision tasks like captioning, detection, OCR, phrase grounding and segmentation.
     
     Args:
