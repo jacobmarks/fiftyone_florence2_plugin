@@ -1,10 +1,10 @@
-## 🏛️ Florence-2 Plugin
+## 🏛️ Florence2 Plugin
 
 ![florence2_plugin_demo](assets/florence2-plugin.gif)
 
 ### Plugin Overview
 
-This plugin allows you to apply Florence-2 directly to your FiftyOne datasets.
+This plugin allows you to apply Florence2 directly to your FiftyOne datasets.
 
 ## Installation
 
@@ -26,7 +26,7 @@ You can also install requirements via:
 fiftyone plugins requirements @jacbobmarks/florence2 --install
 ```
 
-The Florence-2 plugin integrates Microsoft's Florence-2 Vision-Language Model with FiftyOne datasets, offering several powerful computer vision capabilities:
+The Florence2 plugin integrates Microsoft's Florence2 Vision-Language Model with FiftyOne datasets, offering several powerful computer vision capabilities:
 
 1. **Caption Generation** (`CaptionWithFlorence2`)
    - Generates image captions with different levels of detail
@@ -61,4 +61,16 @@ All operators support:
 - Flexible output field naming
 - Integration with FiftyOne's dataset operations
 
-### ℹ👨🏽‍💻 Refer to the [examples notebook](example_sdk_operators.ipynb) for detailed examples for how to run each operator via the FiftyOne SDK!
+## ℹ👨🏽‍💻 Refer to the [examples notebook](example_sdk_operators.ipynb) for detailed examples for how to run each operator via the FiftyOne SDK!
+
+
+# Citation
+
+```bibtext
+@article{xiao2023florence,
+  title={Florence-2: Advancing a unified representation for a variety of vision tasks},
+  author={Xiao, Bin and Wu, Haiping and Xu, Weijian and Dai, Xiyang and Hu, Houdong and Lu, Yumao and Zeng, Michael and Liu, Ce and Yuan, Lu},
+  journal={arXiv preprint arXiv:2311.06242},
+  year={2023}
+}
+```
