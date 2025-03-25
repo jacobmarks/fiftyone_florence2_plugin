@@ -1,5 +1,5 @@
 fiftyone
-transformers<=4.49
+transformers
 torch
 einops 
 timm

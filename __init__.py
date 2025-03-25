@@ -21,13 +21,3 @@ def register(plugin):
     plugin.register(CaptionToPhraseGroundingWithFlorence2)
     plugin.register(ReferringExpressionSegmentationWithFlorence2)
     
-
-# For compatibility with previous versions
-def florence2_activator():
-    """Check if required dependencies are installed."""
-    from importlib.util import find_spec
-    return (find_spec("transformers") is not None and 
-            find_spec("einops") is not None and 
-            find_spec("timm") is not None and 
-            find_spec("torch") is not None and
-            find_spec("PIL") is not None)
