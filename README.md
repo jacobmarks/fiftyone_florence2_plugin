@@ -23,7 +23,7 @@ fiftyone plugins download https://github.com/jacobmarks/fiftyone_florence2_plugi
 You can also install requirements via:
 
 ```shell
-fiftyone plugins requirements @jacbobmarks/florence2 --install
+fiftyone plugins requirements @jacobmarks/florence2 --install
 ```
 
 The Florence2 plugin integrates Microsoft's Florence2 Vision-Language Model with FiftyOne datasets, offering several powerful computer vision capabilities:
