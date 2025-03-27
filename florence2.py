@@ -251,7 +251,7 @@ class Florence2(Model):
         image: Image.Image,
         task: str,
         text_input: Optional[str] = None,
-        max_new_tokens: int = 4096,
+        max_new_tokens: int = 1024,
         num_beams: int = 3,
     ):
         """Generate and parse a response from the model.
