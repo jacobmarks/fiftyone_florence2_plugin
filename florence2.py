@@ -109,7 +109,7 @@ def _convert_polyline(contour, width, height):
     """Convert polyline coordinates to FiftyOne format.
     
     Takes raw polyline coordinates and converts them to normalized coordinates
-    in FiftyOne's format. Creates a closed contour with normalized coordinates.
+    in FiftyOne's format.
 
     Args:
         contour: List of interleaved x,y coordinates [x1,y1,x2,y2,...]
@@ -119,26 +119,30 @@ def _convert_polyline(contour, width, height):
     Returns:
         list: List of (x,y) tuples representing normalized coordinates of the contour
     """
-    # Separate interleaved x,y coordinates and normalize by image dimensions
-    x_points = [p for i, p in enumerate(contour) if i % 2 == 0]
-    y_points = [p for i, p in enumerate(contour) if i % 2 != 0]
-    x_points = [x / width for x in x_points]
-    y_points = [y / height for y in y_points]
-
-    # Convert to list of (x,y) tuples in a zigzag pattern
+    # Initialize empty list to store the normalized coordinate pairs
     xy_points = []
-    curr_x = x_points[0]
-    curr_y = y_points[0]
-    xy_points.append((curr_x, curr_y))
     
-    for i in range(1, len(x_points)):
-        curr_x = x_points[i]
-        xy_points.append((curr_x, curr_y))  # Horizontal segment
-        curr_y = y_points[i] 
-        xy_points.append((curr_x, curr_y))  # Vertical segment
-
-    # Close the contour
-    xy_points.append((x_points[0], curr_y))
+    # Process the interleaved coordinates by taking them in pairs (x,y)
+    # The interleaved format means all values at even indices are x-coordinates
+    # and all values at odd indices are y-coordinates
+    for i in range(0, len(contour), 2):
+        # Check if we have both x and y coordinates available
+        # This guards against malformed input where the list might have an odd length
+        if i+1 < len(contour):
+            # Extract the x-coordinate and normalize it to [0,1] range
+            # Normalization makes coordinates independent of image dimensions
+            x = contour[i] / width
+            
+            # Extract the corresponding y-coordinate and normalize it
+            y = contour[i+1] / height
+            
+            # Add the normalized (x,y) pair to our result list
+            # This maintains the original shape without adding artificial points
+            xy_points.append((x, y))
+    
+    # Return the list of normalized coordinate pairs
+    # This format is ready to be used with FiftyOne's Polyline class
+    # The 'closed' parameter in FiftyOne will determine if the shape is closed, not this function
     return xy_points
 
 class Florence2(Model):
